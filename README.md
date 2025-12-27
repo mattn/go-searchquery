@@ -10,7 +10,6 @@ A general-purpose Go library and command-line tool for parsing and matching sear
 - **Case-Insensitive**: All matching is case-insensitive by default
 - **Substring Matching**: Terms match anywhere within the content
 - **Command-Line Tool**: Grep-style utility for filtering text
-- **NIP-50 Compatible**: Implements the minimum required behavior for Nostr search queries
 
 ## Installation
 
@@ -51,6 +50,109 @@ func main() {
     match, err = searchquery.Match("world hello", `"hello world"`)
     fmt.Println(match) // false
 }
+```
+
+## Database Integration
+
+### PostgreSQL Full-Text Search
+
+Convert search queries to PostgreSQL `tsquery` format for full-text search:
+
+```go
+package main
+
+import (
+    "database/sql"
+    "fmt"
+    "github.com/mattn/go-searchquery"
+    _ "github.com/lib/pq"
+)
+
+func main() {
+    db, _ := sql.Open("postgres", "...")
+    
+    // Convert user query to tsquery
+    userQuery := "hello world"
+    tsquery, err := searchquery.ToTsQuery(userQuery)
+    if err != nil {
+        panic(err)
+    }
+    // tsquery = "(hello & world)"
+    
+    // Use in PostgreSQL query
+    rows, err := db.Query(`
+        SELECT title, content 
+        FROM articles 
+        WHERE to_tsvector('english', content) @@ to_tsquery('english', $1)
+    `, tsquery)
+    
+    // Phrase search example
+    phraseQuery := `"hello world"`
+    tsquery, _ = searchquery.ToTsQuery(phraseQuery)
+    // tsquery = "hello <-> world"  (followed-by operator)
+}
+```
+
+**Query Conversion Examples:**
+
+| Input Query | PostgreSQL tsquery |
+|-------------|-------------------|
+| `hello world` | `(hello & world)` |
+| `"hello world"` | `hello <-> world` |
+| `cat dog bird` | `((cat & dog) & bird)` |
+| `"quick brown fox"` | `quick <-> brown <-> fox` |
+
+### SQLite3 Full-Text Search (FTS5)
+
+For SQLite3, you can use the FTS5 extension with MATCH queries:
+
+```go
+package main
+
+import (
+    "database/sql"
+    "fmt"
+    "github.com/mattn/go-searchquery"
+    _ "github.com/mattn/go-sqlite3"
+)
+
+func main() {
+    db, _ := sql.Open("sqlite3", "test.db")
+    
+    // Create FTS5 table
+    db.Exec(`CREATE VIRTUAL TABLE articles USING fts5(title, content)`)
+    
+    // Convert user query to FTS5 format
+    userQuery := "hello world"
+    ftsQuery, err := searchquery.ToFTS5Query(userQuery)
+    if err != nil {
+        panic(err)
+    }
+    // ftsQuery = "hello AND world"
+    
+    // Use in SQLite FTS5 query
+    rows, err := db.Query(`
+        SELECT title, content 
+        FROM articles 
+        WHERE articles MATCH ?
+    `, ftsQuery)
+    
+    // Phrase search example
+    phraseQuery := `"hello world"`
+    ftsQuery, _ = searchquery.ToFTS5Query(phraseQuery)
+    // ftsQuery = "\"hello world\""  (quoted phrase)
+}
+```
+
+**Query Conversion Examples:**
+
+| Input Query | SQLite FTS5 Query |
+|-------------|-------------------|
+| `hello world` | `hello AND world` |
+| `"hello world"` | `"hello world"` |
+| `cat dog bird` | `cat AND dog AND bird` |
+
+**Note**: Both PostgreSQL and SQLite3 examples assume you have appropriate full-text search indexes set up on your tables.
 ```
 
 ## Command-Line Tool
@@ -135,19 +237,7 @@ This library is suitable for:
 - **Text Search Applications**: Add search functionality to your applications
 - **Log Filtering**: Search through log files with intuitive query syntax
 - **Content Management**: Filter and search user-generated content
-- **Nostr/NIP-50**: Implements the minimum required behavior for Nostr relay search
 - **Any Application**: That needs X/Twitter-style search functionality
-
-### NIP-50 Compliance
-
-For Nostr applications, this library implements the **minimum required behavior (MUST)** from NIP-50:
-
-- Implicit AND for multiple terms  
-- Case-insensitive matching  
-- Substring matching against content  
-- Quoted phrase support  
-
-**Note**: Explicit boolean operators (`AND`, `OR`) and parentheses are currently not supported due to parser implementation issues. These are marked as **SHOULD** (recommended) in NIP-50, not **MUST** (required).
 
 ## Testing
 
@@ -162,10 +252,10 @@ The test suite includes comprehensive coverage of:
 - Edge cases
 - Error handling
 
-## Author
-
-Yasuhiro Matsumoto (a.k.a. mattn)
-
 ## License
 
 MIT
+
+## Author
+
+Yasuhiro Matsumoto (a.k.a. mattn)
