@@ -130,3 +130,64 @@ func escapeFTS5Term(term string) string {
 	}
 	return term
 }
+
+// ToMySQLBoolean converts a search query to MySQL MATCH AGAINST boolean mode format
+// Example: "hello world" -> "+hello +world"
+// Example: "\"hello world\"" -> "\"hello world\""
+func ToMySQLBoolean(query string) (string, error) {
+	if query == "" {
+		return "", nil
+	}
+
+	parser := NewParser(query)
+	ast, err := parser.Parse()
+	if err != nil {
+		return "", err
+	}
+
+	return nodeToMySQLBoolean(ast), nil
+}
+
+// nodeToMySQLBoolean recursively converts AST nodes to MySQL boolean mode format
+func nodeToMySQLBoolean(node Node) string {
+	switch n := node.(type) {
+	case TermNode:
+		// Check if it's a phrase (contains spaces)
+		if strings.Contains(n.Phrase, " ") {
+			// Phrase: keep quotes
+			return fmt.Sprintf("\"%s\"", strings.Trim(n.Phrase, "\""))
+		}
+		// Single term - prefix with + for required
+		return "+" + escapeMySQLTerm(n.Phrase)
+	case AndNode:
+		// In MySQL boolean mode, + prefix means required (AND)
+		left := nodeToMySQLBoolean(n.Left)
+		right := nodeToMySQLBoolean(n.Right)
+		return left + " " + right
+	case OrNode:
+		// In MySQL boolean mode, no prefix or parentheses for OR
+		left := nodeToMySQLBoolean(n.Left)
+		right := nodeToMySQLBoolean(n.Right)
+		// Remove + prefix for OR terms
+		left = strings.TrimPrefix(left, "+")
+		right = strings.TrimPrefix(right, "+")
+		return left + " " + right
+	default:
+		return ""
+	}
+}
+
+// escapeMySQLTerm escapes special characters in MySQL boolean mode terms
+func escapeMySQLTerm(term string) string {
+	// Remove quotes if present
+	term = strings.Trim(term, "\"")
+
+	// MySQL boolean mode special characters: + - > < ( ) ~ * " @
+	// For simple terms, we just need to handle quotes
+	if strings.ContainsAny(term, "+-><()~*\"@") {
+		// Quote the term if it contains special characters
+		term = strings.ReplaceAll(term, "\"", "\\\"")
+		return "\"" + term + "\""
+	}
+	return term
+}

@@ -153,7 +153,64 @@ func main() {
 | `cat dog bird` | `cat AND dog AND bird` |
 
 **Note**: Both PostgreSQL and SQLite3 examples assume you have appropriate full-text search indexes set up on your tables.
+
+### MySQL Full-Text Search
+
+For MySQL, use the MATCH AGAINST syntax with boolean mode:
+
+```go
+package main
+
+import (
+    "database/sql"
+    "fmt"
+    "github.com/mattn/go-searchquery"
+    _ "github.com/go-sql-driver/mysql"
+)
+
+func main() {
+    db, _ := sql.Open("mysql", "user:password@/dbname")
+    
+    // Create table with FULLTEXT index
+    db.Exec(`CREATE TABLE articles (
+        id INT PRIMARY KEY,
+        title VARCHAR(200),
+        content TEXT,
+        FULLTEXT(content)
+    )`)
+    
+    // Convert user query to MySQL boolean mode
+    userQuery := "hello world"
+    mysqlQuery, err := searchquery.ToMySQLBoolean(userQuery)
+    if err != nil {
+        panic(err)
+    }
+    // mysqlQuery = "+hello +world"
+    
+    // Use in MySQL MATCH AGAINST query
+    rows, err := db.Query(`
+        SELECT title, content 
+        FROM articles 
+        WHERE MATCH(content) AGAINST(? IN BOOLEAN MODE)
+    `, mysqlQuery)
+    
+    // Phrase search example
+    phraseQuery := `"hello world"`
+    mysqlQuery, _ = searchquery.ToMySQLBoolean(phraseQuery)
+    // mysqlQuery = "\"hello world\""
+}
 ```
+
+**Query Conversion Examples:**
+
+| Input Query | MySQL Boolean Mode |
+|-------------|-------------------|
+| `hello world` | `+hello +world` |
+| `"hello world"` | `"hello world"` |
+| `cat dog bird` | `+cat +dog +bird` |
+
+**Note**: The `+` prefix in MySQL boolean mode means the term is required (AND logic). Phrases are kept in quotes for exact matching.
+
 
 ## Command-Line Tool
 
