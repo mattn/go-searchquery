@@ -29,24 +29,27 @@ type TermNode struct {
 	Phrase string // Full phrase if it contains spaces
 }
 
-func (TermNode) isNode() {}
+// IsNode implements Node interface
+func (TermNode) IsNode() {}
 
 // AndNode and OrNode represent boolean operator nodes
 type AndNode struct {
 	Left, Right Node
 }
 
-func (AndNode) isNode() {}
+// IsNode implements Node interface
+func (AndNode) IsNode() {}
 
 type OrNode struct {
 	Left, Right Node
 }
 
-func (OrNode) isNode() {}
+// IsNode implements Node interface
+func (OrNode) IsNode() {}
 
 // Node is the interface for AST nodes
 type Node interface {
-	isNode()
+	IsNode()
 }
 
 // Parser parses the query string
@@ -139,7 +142,7 @@ func (p *Parser) Parse() (Node, error) {
 			break
 		}
 		if token.Type == TokenTerm {
-			stack = append(stack, TermNode{Phrase: token.Value})
+			stack = append(stack, &TermNode{Phrase: token.Value})
 		} else if token.Type == TokenLParen {
 			opStack = append(opStack, token)
 		} else if token.Type == TokenRParen {
@@ -193,7 +196,7 @@ func (p *Parser) Parse() (Node, error) {
 		for len(stack) > 1 {
 			left := stack[0]
 			right := stack[1]
-			stack = append([]Node{AndNode{Left: left, Right: right}}, stack[2:]...)
+			stack = append([]Node{&AndNode{Left: left, Right: right}}, stack[2:]...)
 		}
 	}
 
@@ -216,9 +219,9 @@ func (p *Parser) applyOp(stack []Node, opStack []Token) ([]Node, error) {
 
 	var node Node
 	if op.Type == TokenAND {
-		node = AndNode{Left: left, Right: right}
+		node = &AndNode{Left: left, Right: right}
 	} else {
-		node = OrNode{Left: left, Right: right}
+		node = &OrNode{Left: left, Right: right}
 	}
 	stack = append(stack, node)
 	return stack, nil
@@ -251,7 +254,7 @@ func Match(content, query string) (bool, error) {
 // eval recursively evaluates the AST against the lowercase content
 func eval(node Node, contentLower string) bool {
 	switch n := node.(type) {
-	case TermNode:
+	case *TermNode:
 		termLower := strings.ToLower(n.Phrase)
 		if strings.Contains(n.Phrase, " ") || strings.HasPrefix(n.Phrase, "\"") {
 			// Exact phrase match (contiguous sequence)
@@ -260,9 +263,9 @@ func eval(node Node, contentLower string) bool {
 		}
 		// Single term: substring match
 		return strings.Contains(contentLower, termLower)
-	case AndNode:
+	case *AndNode:
 		return eval(n.Left, contentLower) && eval(n.Right, contentLower)
-	case OrNode:
+	case *OrNode:
 		return eval(n.Left, contentLower) || eval(n.Right, contentLower)
 	default:
 		return false

@@ -64,7 +64,7 @@ package main
 import (
     "database/sql"
     "fmt"
-    "github.com/mattn/go-searchquery"
+    "github.com/mattn/go-searchquery/dialect/postgres"
     _ "github.com/lib/pq"
 )
 
@@ -73,7 +73,7 @@ func main() {
     
     // Convert user query to tsquery
     userQuery := "hello world"
-    tsquery, err := searchquery.ToTsQuery(userQuery)
+    tsquery, err := postgres.ToTsQuery(userQuery)
     if err != nil {
         panic(err)
     }
@@ -88,7 +88,7 @@ func main() {
     
     // Phrase search example
     phraseQuery := `"hello world"`
-    tsquery, _ = searchquery.ToTsQuery(phraseQuery)
+    tsquery, _ = postgres.ToTsQuery(phraseQuery)
     // tsquery = "hello <-> world"  (followed-by operator)
 }
 ```
@@ -112,7 +112,7 @@ package main
 import (
     "database/sql"
     "fmt"
-    "github.com/mattn/go-searchquery"
+    "github.com/mattn/go-searchquery/dialect/sqlite"
     _ "github.com/mattn/go-sqlite3"
 )
 
@@ -124,7 +124,7 @@ func main() {
     
     // Convert user query to FTS5 format
     userQuery := "hello world"
-    ftsQuery, err := searchquery.ToFTS5Query(userQuery)
+    ftsQuery, err := sqlite.ToFTS5Query(userQuery)
     if err != nil {
         panic(err)
     }
@@ -139,7 +139,7 @@ func main() {
     
     // Phrase search example
     phraseQuery := `"hello world"`
-    ftsQuery, _ = searchquery.ToFTS5Query(phraseQuery)
+    ftsQuery, _ = sqlite.ToFTS5Query(phraseQuery)
     // ftsQuery = "\"hello world\""  (quoted phrase)
 }
 ```
@@ -164,7 +164,7 @@ package main
 import (
     "database/sql"
     "fmt"
-    "github.com/mattn/go-searchquery"
+    "github.com/mattn/go-searchquery/dialect/mysql"
     _ "github.com/go-sql-driver/mysql"
 )
 
@@ -181,7 +181,7 @@ func main() {
     
     // Convert user query to MySQL boolean mode
     userQuery := "hello world"
-    mysqlQuery, err := searchquery.ToMySQLBoolean(userQuery)
+    mysqlQuery, err := mysql.ToBoolean(userQuery)
     if err != nil {
         panic(err)
     }
@@ -196,7 +196,7 @@ func main() {
     
     // Phrase search example
     phraseQuery := `"hello world"`
-    mysqlQuery, _ = searchquery.ToMySQLBoolean(phraseQuery)
+    mysqlQuery, _ = mysql.ToBoolean(phraseQuery)
     // mysqlQuery = "\"hello world\""
 }
 ```
