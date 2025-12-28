@@ -10,6 +10,7 @@ A general-purpose Go library and command-line tool for parsing and matching sear
 - **Case-Insensitive**: All matching is case-insensitive by default
 - **Substring Matching**: Terms match anywhere within the content
 - **Command-Line Tool**: Grep-style utility for filtering text
+- **Database Dialects**: Convert queries to various database formats
 
 ## Installation
 
@@ -52,164 +53,29 @@ func main() {
 }
 ```
 
-## Database Integration
+## Database Dialects
 
-### PostgreSQL Full-Text Search
+Convert search queries to database-specific formats:
 
-Convert search queries to PostgreSQL `tsquery` format for full-text search:
+| Dialect | Output Format | Package | Description |
+|---------|---------------|---------|-------------|
+| [PostgreSQL](dialect/postgres/) | `tsquery` | `dialect/postgres` | Uses `<->` for phrases, `&` for AND |
+| [SQLite](dialect/sqlite/) | FTS5 | `dialect/sqlite` | Uses `AND`/`OR` keywords |
+| [MySQL](dialect/mysql/) | Boolean mode | `dialect/mysql` | Uses `+` prefix for required terms |
+| [Elasticsearch](dialect/elasticsearch/) | Query String / DSL | `dialect/elasticsearch` | Two formats: simple or JSON DSL |
+| [Meilisearch](dialect/meilisearch/) | Query / Filter | `dialect/meilisearch` | Simple query or exact filter format |
+| [MongoDB](dialect/mongodb/) | `$text` / `$regex` | `dialect/mongodb` | Text search or regex queries |
 
-```go
-package main
+Click on each dialect name for detailed documentation and examples.
 
-import (
-    "database/sql"
-    "fmt"
-    "github.com/mattn/go-searchquery/dialect/postgres"
-    _ "github.com/lib/pq"
-)
-
-func main() {
-    db, _ := sql.Open("postgres", "...")
-    
-    // Convert user query to tsquery
-    userQuery := "hello world"
-    tsquery, err := postgres.ToTsQuery(userQuery)
-    if err != nil {
-        panic(err)
-    }
-    // tsquery = "(hello & world)"
-    
-    // Use in PostgreSQL query
-    rows, err := db.Query(`
-        SELECT title, content 
-        FROM articles 
-        WHERE to_tsvector('english', content) @@ to_tsquery('english', $1)
-    `, tsquery)
-    
-    // Phrase search example
-    phraseQuery := `"hello world"`
-    tsquery, _ = postgres.ToTsQuery(phraseQuery)
-    // tsquery = "hello <-> world"  (followed-by operator)
-}
-```
-
-**Query Conversion Examples:**
-
-| Input Query | PostgreSQL tsquery |
-|-------------|-------------------|
-| `hello world` | `(hello & world)` |
-| `"hello world"` | `hello <-> world` |
-| `cat dog bird` | `((cat & dog) & bird)` |
-| `"quick brown fox"` | `quick <-> brown <-> fox` |
-
-### SQLite3 Full-Text Search (FTS5)
-
-For SQLite3, you can use the FTS5 extension with MATCH queries:
+### Quick Example
 
 ```go
-package main
+import "github.com/mattn/go-searchquery/dialect/postgres"
 
-import (
-    "database/sql"
-    "fmt"
-    "github.com/mattn/go-searchquery/dialect/sqlite"
-    _ "github.com/mattn/go-sqlite3"
-)
-
-func main() {
-    db, _ := sql.Open("sqlite3", "test.db")
-    
-    // Create FTS5 table
-    db.Exec(`CREATE VIRTUAL TABLE articles USING fts5(title, content)`)
-    
-    // Convert user query to FTS5 format
-    userQuery := "hello world"
-    ftsQuery, err := sqlite.ToFTS5Query(userQuery)
-    if err != nil {
-        panic(err)
-    }
-    // ftsQuery = "hello AND world"
-    
-    // Use in SQLite FTS5 query
-    rows, err := db.Query(`
-        SELECT title, content 
-        FROM articles 
-        WHERE articles MATCH ?
-    `, ftsQuery)
-    
-    // Phrase search example
-    phraseQuery := `"hello world"`
-    ftsQuery, _ = sqlite.ToFTS5Query(phraseQuery)
-    // ftsQuery = "\"hello world\""  (quoted phrase)
-}
+query, _ := postgres.ToTsQuery("hello world")
+// Output: "(hello & world)"
 ```
-
-**Query Conversion Examples:**
-
-| Input Query | SQLite FTS5 Query |
-|-------------|-------------------|
-| `hello world` | `hello AND world` |
-| `"hello world"` | `"hello world"` |
-| `cat dog bird` | `cat AND dog AND bird` |
-
-**Note**: Both PostgreSQL and SQLite3 examples assume you have appropriate full-text search indexes set up on your tables.
-
-### MySQL Full-Text Search
-
-For MySQL, use the MATCH AGAINST syntax with boolean mode:
-
-```go
-package main
-
-import (
-    "database/sql"
-    "fmt"
-    "github.com/mattn/go-searchquery/dialect/mysql"
-    _ "github.com/go-sql-driver/mysql"
-)
-
-func main() {
-    db, _ := sql.Open("mysql", "user:password@/dbname")
-    
-    // Create table with FULLTEXT index
-    db.Exec(`CREATE TABLE articles (
-        id INT PRIMARY KEY,
-        title VARCHAR(200),
-        content TEXT,
-        FULLTEXT(content)
-    )`)
-    
-    // Convert user query to MySQL boolean mode
-    userQuery := "hello world"
-    mysqlQuery, err := mysql.ToBoolean(userQuery)
-    if err != nil {
-        panic(err)
-    }
-    // mysqlQuery = "+hello +world"
-    
-    // Use in MySQL MATCH AGAINST query
-    rows, err := db.Query(`
-        SELECT title, content 
-        FROM articles 
-        WHERE MATCH(content) AGAINST(? IN BOOLEAN MODE)
-    `, mysqlQuery)
-    
-    // Phrase search example
-    phraseQuery := `"hello world"`
-    mysqlQuery, _ = mysql.ToBoolean(phraseQuery)
-    // mysqlQuery = "\"hello world\""
-}
-```
-
-**Query Conversion Examples:**
-
-| Input Query | MySQL Boolean Mode |
-|-------------|-------------------|
-| `hello world` | `+hello +world` |
-| `"hello world"` | `"hello world"` |
-| `cat dog bird` | `+cat +dog +bird` |
-
-**Note**: The `+` prefix in MySQL boolean mode means the term is required (AND logic). Phrases are kept in quotes for exact matching.
 
 
 ## Command-Line Tool
