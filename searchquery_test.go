@@ -171,24 +171,18 @@ func TestMatchExplicitANDOperator(t *testing.T) {
 			query:      "hello AND world",
 			content:    "Hello World",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "explicit AND first missing",
 			query:      "goodbye AND world",
 			content:    "Hello World",
 			want:       false,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "explicit AND second missing",
 			query:      "hello AND mars",
 			content:    "Hello World",
 			want:       false,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 	}
 
@@ -223,32 +217,24 @@ func TestMatchExplicitOROperator(t *testing.T) {
 			query:      "hello OR world",
 			content:    "Hello World",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "explicit OR first present",
 			query:      "hello OR mars",
 			content:    "Hello World",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "explicit OR second present",
 			query:      "goodbye OR world",
 			content:    "Hello World",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "explicit OR both missing",
 			query:      "goodbye OR mars",
 			content:    "Hello World",
 			want:       false,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 	}
 
@@ -325,32 +311,24 @@ func TestMatchParentheses(t *testing.T) {
 			query:      "cat AND (dog OR bird)",
 			content:    "I have a cat and a bird",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "AND with OR in parentheses - no match",
 			query:      "cat AND (dog OR bird)",
 			content:    "I have a cat",
 			want:       false,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "OR with AND in parentheses",
 			query:      "(cat AND dog) OR bird",
 			content:    "I have a bird",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "precedence: AND higher than OR",
 			query:      "cat AND dog OR bird AND fish",
 			content:    "I have a bird and a fish",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 	}
 
@@ -482,16 +460,12 @@ func TestMatchComplexQueries(t *testing.T) {
 			query:      `"hello world" AND test`,
 			content:    "This is a hello world test",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:       "phrase with explicit OR",
 			query:      `"hello world" OR "goodbye world"`,
 			content:    "Say goodbye world",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 		{
 			name:    "NIP-50 example: nostr apps",
@@ -504,8 +478,6 @@ func TestMatchComplexQueries(t *testing.T) {
 			query:      `(golang OR go) AND (tutorial OR guide)`,
 			content:    "A beginner's guide to golang programming",
 			want:       true,
-			skip:       true,
-			skipReason: "parser bug: explicit operators cause 'invalid expression'",
 		},
 	}
 

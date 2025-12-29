@@ -148,7 +148,7 @@ func (p *Parser) Parse() (Node, error) {
 		} else if token.Type == TokenRParen {
 			for len(opStack) > 0 && opStack[len(opStack)-1].Type != TokenLParen {
 				var err error
-				stack, err = p.applyOp(stack, opStack)
+				stack, opStack, err = p.applyOp(stack, opStack)
 				if err != nil {
 					return nil, err
 				}
@@ -165,9 +165,10 @@ func (p *Parser) Parse() (Node, error) {
 				}
 				// Apply higher or equal precedence operators
 				if (token.Type == TokenOR && top.Type == TokenAND) ||
-					(token.Type == TokenAND && top.Type == TokenAND) {
+					(token.Type == TokenAND && top.Type == TokenAND) ||
+					(token.Type == TokenOR && top.Type == TokenOR) {
 					var err error
-					stack, err = p.applyOp(stack, opStack)
+					stack, opStack, err = p.applyOp(stack, opStack)
 					if err != nil {
 						return nil, err
 					}
@@ -185,7 +186,7 @@ func (p *Parser) Parse() (Node, error) {
 			return nil, fmt.Errorf("mismatched parentheses")
 		}
 		var err error
-		stack, err = p.applyOp(stack, opStack)
+		stack, opStack, err = p.applyOp(stack, opStack)
 		if err != nil {
 			return nil, err
 		}
@@ -207,9 +208,12 @@ func (p *Parser) Parse() (Node, error) {
 }
 
 // applyOp pops an operator and applies it to the top two nodes on the stack
-func (p *Parser) applyOp(stack []Node, opStack []Token) ([]Node, error) {
+func (p *Parser) applyOp(stack []Node, opStack []Token) ([]Node, []Token, error) {
 	if len(stack) < 2 {
-		return nil, fmt.Errorf("invalid expression")
+		return nil, nil, fmt.Errorf("invalid expression")
+	}
+	if len(opStack) < 1 {
+		return nil, nil, fmt.Errorf("invalid expression")
 	}
 	op := opStack[len(opStack)-1]
 	opStack = opStack[:len(opStack)-1]
@@ -224,7 +228,7 @@ func (p *Parser) applyOp(stack []Node, opStack []Token) ([]Node, error) {
 		node = &OrNode{Left: left, Right: right}
 	}
 	stack = append(stack, node)
-	return stack, nil
+	return stack, opStack, nil
 }
 
 // nextToken returns the next token in the stream

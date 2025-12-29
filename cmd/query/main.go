@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -17,21 +18,75 @@ var (
 	quiet      = flag.Bool("q", false, "quiet mode: suppress normal output")
 )
 
-func main() {
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] QUERY [FILE...]\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\nSearch for lines matching a NIP-50 search query.\n")
-		fmt.Fprintf(os.Stderr, "\nQuery Syntax:\n")
-		fmt.Fprintf(os.Stderr, "  - Multiple terms are treated as implicit AND\n")
-		fmt.Fprintf(os.Stderr, "  - Use quotes for phrases: \"hello world\"\n")
-		fmt.Fprintf(os.Stderr, "  - Case-insensitive substring matching\n")
-		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s \"hello world\" file.txt\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s 'cat dog' file1.txt file2.txt\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  cat file.txt | %s 'search term'\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\nOptions:\n")
-		flag.PrintDefaults()
+func usage() {
+	fmt.Fprint(os.Stderr, "Usage: query [OPTIONS] QUERY [FILE...]\n")
+	fmt.Fprint(os.Stderr, "\nSearch for lines matching a NIP-50 search query.\n")
+	fmt.Fprint(os.Stderr, "\nQuery Syntax:\n")
+	fmt.Fprint(os.Stderr, "  - Multiple terms are treated as implicit AND\n")
+	fmt.Fprint(os.Stderr, "  - Use quotes for phrases: \"hello world\"\n")
+	fmt.Fprint(os.Stderr, "  - Case-insensitive substring matching\n")
+	fmt.Fprint(os.Stderr, "\nExamples:\n")
+	fmt.Fprint(os.Stderr, "  query \"hello world\" file.txt\n")
+	fmt.Fprint(os.Stderr, "  query 'cat dog' file1.txt file2.txt\n")
+	fmt.Fprint(os.Stderr, "  cat file.txt | query 'search term'\n")
+	fmt.Fprint(os.Stderr, "\nOptions:\n")
+	flag.PrintDefaults()
+}
+
+func isBinary(filename string) bool {
+	f, err := os.Open(filename)
+	if err != nil {
+		return false
 	}
+	defer f.Close()
+
+	buf := make([]byte, 512)
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return false
+	}
+
+	return bytes.IndexByte(buf[:n], 0) != -1
+}
+
+func process(query string, files []string) int {
+	exitCode := 0
+	for _, filename := range files {
+		if st, err := os.Stat(filename); err == nil && st.IsDir() {
+			ff, err := os.ReadDir(filename)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s: %v\n", filename, err)
+				exitCode = 2
+				continue
+			}
+			for _, entry := range ff {
+				process(query, []string{filename + "/" + entry.Name()})
+			}
+		} else {
+			if isBinary(filename) {
+				continue
+			}
+
+			f, err := os.Open(filename)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s: %v\n", filename, err)
+				exitCode = 2
+				continue
+			}
+
+			prefix := filename + ":"
+			if !processReader(f, query, prefix) {
+				exitCode = 1
+			}
+			f.Close()
+		}
+	}
+
+	return exitCode
+}
+
+func main() {
+	flag.Usage = usage
 
 	flag.Parse()
 
@@ -43,36 +98,15 @@ func main() {
 	query := flag.Arg(0)
 	files := flag.Args()[1:]
 
-	exitCode := 0
-
 	if len(files) == 0 {
 		// Read from stdin
 		if !processReader(os.Stdin, query, "") {
-			exitCode = 1
+			os.Exit(1)
 		}
 	} else {
 		// Process each file
-		for _, filename := range files {
-			f, err := os.Open(filename)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%s: %v\n", filename, err)
-				exitCode = 2
-				continue
-			}
-
-			prefix := ""
-			if len(files) > 1 {
-				prefix = filename + ":"
-			}
-
-			if !processReader(f, query, prefix) {
-				exitCode = 1
-			}
-			f.Close()
-		}
+		os.Exit(process(query, files))
 	}
-
-	os.Exit(exitCode)
 }
 
 func processReader(r io.Reader, query, prefix string) bool {
@@ -118,7 +152,7 @@ func processReader(r io.Reader, query, prefix string) bool {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
+	if err := scanner.Err(); err != nil && err != io.EOF {
 		fmt.Fprintf(os.Stderr, "read error: %v\n", err)
 		return false
 	}
