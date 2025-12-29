@@ -164,6 +164,7 @@ All dialect functions support lookup:
 - `meilisearch.ToFilter(field, query, searchquery.WithLookup(...))`
 - `mongodb.ToTextSearch(query, searchquery.WithLookup(...))`
 - `mongodb.ToRegexQuery(query, field, searchquery.WithLookup(...))`
+- `bleve.ToQueryString(query, searchquery.WithLookup(...))`
 
 
 ## Database Dialects
@@ -178,6 +179,7 @@ Convert search queries to database-specific formats:
 | [Elasticsearch](dialect/elasticsearch/) | Query String / DSL | `dialect/elasticsearch` | Two formats: simple or JSON DSL |
 | [Meilisearch](dialect/meilisearch/) | Query / Filter | `dialect/meilisearch` | Simple query or exact filter format |
 | [MongoDB](dialect/mongodb/) | `$text` / `$regex` | `dialect/mongodb` | Text search or regex queries |
+| [Bleve](dialect/bleve/) | Query String | `dialect/bleve` | Lucene-style query with `+` for required terms |
 
 Click on each dialect name for detailed documentation and examples.
 
