@@ -10,12 +10,12 @@ import (
 // ToTsQuery converts a search query to PostgreSQL tsquery format
 // Example: "hello world" -> "(hello & world)"
 // Example: "\"hello world\"" -> "hello <-> world"
-func ToTsQuery(query string) (string, error) {
+func ToTsQuery(query string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err

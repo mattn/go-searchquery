@@ -10,12 +10,12 @@ import (
 // ToFTS5Query converts a search query to SQLite FTS5 MATCH format
 // Example: "hello world" -> "hello AND world"
 // Example: "\"hello world\"" -> "\"hello world\""
-func ToFTS5Query(query string) (string, error) {
+func ToFTS5Query(query string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err

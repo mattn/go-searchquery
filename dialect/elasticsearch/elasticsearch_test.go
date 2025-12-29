@@ -92,7 +92,7 @@ func TestToMatchQuery(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			
+
 			// Compare as JSON to ignore formatting differences
 			var gotJSON, wantJSON interface{}
 			if err := json.Unmarshal([]byte(got), &gotJSON); err != nil {
@@ -101,10 +101,10 @@ func TestToMatchQuery(t *testing.T) {
 			if err := json.Unmarshal([]byte(tt.want), &wantJSON); err != nil {
 				t.Fatalf("failed to parse want JSON: %v", err)
 			}
-			
+
 			gotStr, _ := json.Marshal(gotJSON)
 			wantStr, _ := json.Marshal(wantJSON)
-			
+
 			if string(gotStr) != string(wantStr) {
 				t.Errorf("ToMatchQuery(%q, %q) = %s, want %s", tt.query, tt.field, gotStr, wantStr)
 			}

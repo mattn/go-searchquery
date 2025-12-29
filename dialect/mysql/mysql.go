@@ -10,12 +10,12 @@ import (
 // ToBoolean converts a search query to MySQL MATCH AGAINST boolean mode format
 // Example: "hello world" -> "+hello +world"
 // Example: "\"hello world\"" -> "\"hello world\""
-func ToBoolean(query string) (string, error) {
+func ToBoolean(query string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err

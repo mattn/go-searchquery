@@ -52,17 +52,35 @@ type Node interface {
 	IsNode()
 }
 
+// LookupFunc is a callback function for token lookup/transformation
+// If it returns an empty string, the token is treated as if it doesn't exist
+type LookupFunc func(token string) string
+
+// ParserOption is a functional option for Parser
+type ParserOption func(*Parser)
+
+// WithLookup sets a lookup function for token transformation
+func WithLookup(fn LookupFunc) ParserOption {
+	return func(p *Parser) {
+		p.lookup = fn
+	}
+}
+
 // Parser parses the query string
 type Parser struct {
 	input   string
 	pos     int
 	tokens  []Token
 	current int
+	lookup  LookupFunc
 }
 
 // NewParser creates a new parser instance
-func NewParser(query string) *Parser {
+func NewParser(query string, opts ...ParserOption) *Parser {
 	p := &Parser{input: strings.TrimSpace(query)}
+	for _, opt := range opts {
+		opt(p)
+	}
 	p.tokenize()
 	return p
 }
@@ -109,10 +127,18 @@ func (p *Parser) tokenize() {
 			}
 			if i >= len(input) {
 				// Unclosed quote: treat remaining text as term (simple fallback)
-				p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: input[start:]})
+				term := input[start:]
+				term = p.applyLookup(term)
+				if term != "" {
+					p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term})
+				}
 				i = len(input)
 			} else {
-				p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: input[start:i]})
+				term := input[start:i]
+				term = p.applyLookup(term)
+				if term != "" {
+					p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term})
+				}
 				i++ // skip closing quote
 			}
 			continue
@@ -125,10 +151,21 @@ func (p *Parser) tokenize() {
 		}
 		term := input[start:i]
 		if term != "" {
-			p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term})
+			term = p.applyLookup(term)
+			if term != "" {
+				p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term})
+			}
 		}
 	}
 	p.tokens = append(p.tokens, Token{Type: TokenEOF})
+}
+
+// applyLookup applies the lookup function to a term if set
+func (p *Parser) applyLookup(term string) string {
+	if p.lookup != nil {
+		return p.lookup(term)
+	}
+	return term
 }
 
 // Parse builds the AST using a shunting-yard-like approach

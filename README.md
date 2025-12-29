@@ -53,6 +53,119 @@ func main() {
 }
 ```
 
+## Advanced Features
+
+### Token Lookup and Transformation
+
+You can provide a callback function to transform or filter tokens during parsing:
+
+```go
+package main
+
+import (
+    "fmt"
+    "strings"
+    "github.com/mattn/go-searchquery"
+)
+
+func main() {
+    // Example 1: Uppercase transformation
+    parser := searchquery.NewParser("hello world", searchquery.WithLookup(func(token string) string {
+        return strings.ToUpper(token)
+    }))
+    ast, _ := parser.Parse()
+    // Result: (HELLO AND WORLD)
+    
+    // Example 2: Alias replacement
+    aliases := map[string]string{
+        "x":  "twitter",
+        "fb": "facebook",
+    }
+    parser = searchquery.NewParser("x OR fb", searchquery.WithLookup(func(token string) string {
+        if alias, ok := aliases[token]; ok {
+            return alias
+        }
+        return token
+    }))
+    ast, _ = parser.Parse()
+    // Result: (twitter OR facebook)
+    
+    // Example 3: Stopword removal
+    stopwords := map[string]bool{"the": true, "a": true, "an": true}
+    parser = searchquery.NewParser("the cat and a dog", searchquery.WithLookup(func(token string) string {
+        if stopwords[token] {
+            return "" // Empty string removes the token
+        }
+        return token
+    }))
+    ast, _ = parser.Parse()
+    // Result: ((cat AND and) AND dog)
+}
+```
+
+**Use Cases:**
+- **Alias Resolution**: Map short aliases to full terms (e.g., "x" → "twitter")
+- **Stopword Removal**: Filter out common words
+- **Case Normalization**: Transform tokens to uppercase/lowercase
+- **Token Expansion**: Replace tokens with multiple terms
+- **Security Filtering**: Remove potentially harmful tokens
+
+### Using Lookup with Database Dialects
+
+All dialect functions accept the same `ParserOption` parameters:
+
+```go
+package main
+
+import (
+    "strings"
+    "github.com/mattn/go-searchquery"
+    "github.com/mattn/go-searchquery/dialect/postgres"
+    "github.com/mattn/go-searchquery/dialect/elasticsearch"
+)
+
+func main() {
+    // Define aliases
+    aliases := map[string]string{
+        "x":  "twitter",
+        "fb": "facebook",
+    }
+    
+    // PostgreSQL with alias replacement
+    query := "x OR fb"
+    pgResult, _ := postgres.ToTsQuery(query, searchquery.WithLookup(func(token string) string {
+        if alias, ok := aliases[token]; ok {
+            return alias
+        }
+        return token
+    }))
+    // pgResult: "(twitter | facebook)"
+    
+    // Elasticsearch with stopword removal
+    stopwords := map[string]bool{"the": true, "a": true}
+    query2 := "the quick fox"
+    esResult, _ := elasticsearch.ToQueryString(query2, searchquery.WithLookup(func(token string) string {
+        if stopwords[token] {
+            return ""
+        }
+        return token
+    }))
+    // esResult: "(quick AND fox)"
+}
+```
+
+All dialect functions support lookup:
+- `postgres.ToTsQuery(query, searchquery.WithLookup(...))`
+- `sqlite.ToFTS5Query(query, searchquery.WithLookup(...))`
+- `mysql.ToBoolean(query, searchquery.WithLookup(...))`
+- `elasticsearch.ToQueryString(query, searchquery.WithLookup(...))`
+- `elasticsearch.ToMatchQuery(query, field, searchquery.WithLookup(...))`
+- `meilisearch.ToQuery(query, searchquery.WithLookup(...))`
+- `meilisearch.ToFilter(field, query, searchquery.WithLookup(...))`
+- `mongodb.ToTextSearch(query, searchquery.WithLookup(...))`
+- `mongodb.ToRegexQuery(query, field, searchquery.WithLookup(...))`
+
+
 ## Database Dialects
 
 Convert search queries to database-specific formats:

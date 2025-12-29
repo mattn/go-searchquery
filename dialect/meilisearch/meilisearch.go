@@ -11,12 +11,12 @@ import (
 // Meilisearch uses a simple query syntax similar to standard search engines
 // Example: "hello world" -> "hello world"
 // Example: "\"hello world\"" -> "\"hello world\""
-func ToQuery(query string) (string, error) {
+func ToQuery(query string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err
@@ -54,12 +54,12 @@ func nodeToQuery(node searchquery.Node) string {
 // ToFilter converts a search query to Meilisearch filter format
 // This is useful for exact matching on specific fields
 // Example: field="title", query="hello world" -> "title = \"hello world\""
-func ToFilter(field, query string) (string, error) {
+func ToFilter(field, query string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err

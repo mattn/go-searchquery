@@ -12,12 +12,12 @@ import (
 // Example: "hello world" -> {"$text": {"$search": "hello world"}}
 // Note: MongoDB $text with multiple terms uses implicit OR by default
 // For AND behavior, use quotes: "\"hello\" \"world\""
-func ToTextSearch(query string) (string, error) {
+func ToTextSearch(query string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "{}", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err
@@ -76,12 +76,12 @@ func removeQuotes(s string) string {
 // ToRegexQuery converts a search query to MongoDB $regex query
 // This provides more control but is slower than $text search
 // Example: "hello world" -> {"$and": [{"field": {"$regex": "hello", "$options": "i"}}, {"field": {"$regex": "world", "$options": "i"}}]}
-func ToRegexQuery(query, field string) (string, error) {
+func ToRegexQuery(query, field string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "{}", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err

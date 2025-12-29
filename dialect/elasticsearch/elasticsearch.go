@@ -11,12 +11,12 @@ import (
 // ToQueryString converts a search query to Elasticsearch Query String format
 // Example: "hello world" -> "hello AND world"
 // Example: "\"hello world\"" -> "\"hello world\""
-func ToQueryString(query string) (string, error) {
+func ToQueryString(query string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err
@@ -92,12 +92,12 @@ type BoolClause struct {
 
 // ToMatchQuery converts a search query to Elasticsearch Match Query DSL
 // Returns JSON string for the query
-func ToMatchQuery(query, field string) (string, error) {
+func ToMatchQuery(query, field string, opts ...searchquery.ParserOption) (string, error) {
 	if query == "" {
 		return "{}", nil
 	}
 
-	parser := searchquery.NewParser(query)
+	parser := searchquery.NewParser(query, opts...)
 	ast, err := parser.Parse()
 	if err != nil {
 		return "", err
