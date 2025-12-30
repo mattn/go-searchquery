@@ -1,0 +1,4 @@
+github.com/mattn/go-searchquery v0.0.0-20251228165728-790fffe5df31 h1:qFyFoXvb4lgyQYfLn2BQ4T1iwzjzpuqJeYBLZlMGoUw=
+github.com/mattn/go-searchquery v0.0.0-20251228165728-790fffe5df31/go.mod h1:gku79NelSZpdtcRTD7tsWokOCzcG9T0+jyYUnbIikCY=
+github.com/mattn/go-sqlite3 v1.14.32 h1:JD12Ag3oLy1zQA+BNn74xRgaBbdhbNIDYvQUEuuErjs=
+github.com/mattn/go-sqlite3 v1.14.32/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
