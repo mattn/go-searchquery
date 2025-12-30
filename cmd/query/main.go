@@ -33,20 +33,8 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func isBinary(filename string) bool {
-	f, err := os.Open(filename)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	buf := make([]byte, 512)
-	n, err := f.Read(buf)
-	if err != nil && err != io.EOF {
-		return false
-	}
-
-	return bytes.IndexByte(buf[:n], 0) != -1
+func isBinary(buf []byte) bool {
+	return bytes.IndexByte(buf, 0) != -1
 }
 
 func process(query string, files []string) int {
@@ -63,10 +51,6 @@ func process(query string, files []string) int {
 				process(query, []string{filename + "/" + entry.Name()})
 			}
 		} else {
-			if isBinary(filename) {
-				continue
-			}
-
 			f, err := os.Open(filename)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", filename, err)
@@ -74,8 +58,22 @@ func process(query string, files []string) int {
 				continue
 			}
 
+			buf := make([]byte, 512)
+			n, err := f.Read(buf)
+			if err != nil && err != io.EOF {
+				fmt.Fprintf(os.Stderr, "%s: %v\n", filename, err)
+				f.Close()
+				exitCode = 2
+				continue
+			}
+
+			if isBinary(buf[:n]) {
+				f.Close()
+				continue
+			}
+
 			prefix := filename + ":"
-			if !processReader(f, query, prefix) {
+			if !processReader(io.MultiReader(bytes.NewReader(buf[:n]), f), query, prefix) {
 				exitCode = 1
 			}
 			f.Close()
