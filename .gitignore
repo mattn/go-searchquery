@@ -3,3 +3,4 @@ setenv.sh
 example/postgres/postgres
 example/sqlite/sqlite
 example/sqlite/database.sqlite3
+example/mysql/mysql
