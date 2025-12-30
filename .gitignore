@@ -6,3 +6,4 @@ example/sqlite/sqlite
 example/sqlite/database.sqlite3
 example/mysql/mysql
 example/meilisearch/meilisearch
+example/nostr-search/nostr-search
