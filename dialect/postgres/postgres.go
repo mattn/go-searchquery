@@ -64,7 +64,7 @@ func escapeTsQueryTerm(term string) string {
 	// Check if term needs quoting (contains special chars or spaces)
 	needsQuoting := false
 	for _, r := range term {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' {
 			needsQuoting = true
 			break
 		}
