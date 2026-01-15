@@ -22,6 +22,7 @@ const (
 type Token struct {
 	Type  TokenType
 	Value string // Used only for Term tokens (including phrases)
+	Pos   int    // Byte position in the input string
 }
 
 // TermNode represents a term or phrase node in the AST
@@ -69,7 +70,6 @@ func WithLookup(fn LookupFunc) ParserOption {
 // Parser parses the query string
 type Parser struct {
 	input   string
-	pos     int
 	tokens  []Token
 	current int
 	lookup  LookupFunc
@@ -96,30 +96,31 @@ func (p *Parser) tokenize() {
 		}
 
 		if input[i] == '(' {
-			p.tokens = append(p.tokens, Token{Type: TokenLParen})
+			p.tokens = append(p.tokens, Token{Type: TokenLParen, Pos: i})
 			i++
 			continue
 		}
 		if input[i] == ')' {
-			p.tokens = append(p.tokens, Token{Type: TokenRParen})
+			p.tokens = append(p.tokens, Token{Type: TokenRParen, Pos: i})
 			i++
 			continue
 		}
 
 		// Match AND or OR (case-sensitive, uppercase only)
 		if strings.HasPrefix(input[i:], "AND") && (i+3 == len(input) || unicode.IsSpace(rune(input[i+3])) || input[i+3] == '(' || input[i+3] == ')') {
-			p.tokens = append(p.tokens, Token{Type: TokenAND})
+			p.tokens = append(p.tokens, Token{Type: TokenAND, Pos: i})
 			i += 3
 			continue
 		}
 		if strings.HasPrefix(input[i:], "OR") && (i+2 == len(input) || unicode.IsSpace(rune(input[i+2])) || input[i+2] == '(' || input[i+2] == ')') {
-			p.tokens = append(p.tokens, Token{Type: TokenOR})
+			p.tokens = append(p.tokens, Token{Type: TokenOR, Pos: i})
 			i += 2
 			continue
 		}
 
 		// Quoted phrase or unquoted term
 		if input[i] == '"' {
+			startPos := i
 			i++ // skip opening quote
 			start := i
 			for i < len(input) && input[i] != '"' {
@@ -130,14 +131,14 @@ func (p *Parser) tokenize() {
 				term := input[start:]
 				term = p.applyLookup(term)
 				if term != "" {
-					p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term})
+					p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term, Pos: startPos})
 				}
 				i = len(input)
 			} else {
 				term := input[start:i]
 				term = p.applyLookup(term)
 				if term != "" {
-					p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term})
+					p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term, Pos: startPos})
 				}
 				i++ // skip closing quote
 			}
@@ -153,11 +154,11 @@ func (p *Parser) tokenize() {
 		if term != "" {
 			term = p.applyLookup(term)
 			if term != "" {
-				p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term})
+				p.tokens = append(p.tokens, Token{Type: TokenTerm, Value: term, Pos: start})
 			}
 		}
 	}
-	p.tokens = append(p.tokens, Token{Type: TokenEOF})
+	p.tokens = append(p.tokens, Token{Type: TokenEOF, Pos: len(input)})
 }
 
 // applyLookup applies the lookup function to a term if set
@@ -191,7 +192,7 @@ func (p *Parser) Parse() (Node, error) {
 				}
 			}
 			if len(opStack) == 0 {
-				return nil, fmt.Errorf("mismatched parentheses")
+				return nil, fmt.Errorf("mismatched parentheses at position %d", token.Pos)
 			}
 			opStack = opStack[:len(opStack)-1] // pop LParen
 		} else if token.Type == TokenAND || token.Type == TokenOR {
@@ -220,7 +221,8 @@ func (p *Parser) Parse() (Node, error) {
 	// Apply remaining operators
 	for len(opStack) > 0 {
 		if opStack[len(opStack)-1].Type == TokenLParen {
-			return nil, fmt.Errorf("mismatched parentheses")
+			pos := opStack[len(opStack)-1].Pos
+			return nil, fmt.Errorf("mismatched parentheses at position %d", pos)
 		}
 		var err error
 		stack, opStack, err = p.applyOp(stack, opStack)
