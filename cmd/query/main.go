@@ -62,13 +62,13 @@ func process(query string, files []string) int {
 			n, err := f.Read(buf)
 			if err != nil && err != io.EOF {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", filename, err)
-				f.Close()
+				_ = f.Close()
 				exitCode = 2
 				continue
 			}
 
 			if isBinary(buf[:n]) {
-				f.Close()
+				_ = f.Close()
 				continue
 			}
 
@@ -76,7 +76,7 @@ func process(query string, files []string) int {
 			if !processReader(io.MultiReader(bytes.NewReader(buf[:n]), f), query, prefix) {
 				exitCode = 1
 			}
-			f.Close()
+			_ = f.Close()
 		}
 	}
 
